@@ -11,7 +11,7 @@ const createDB = () => {
     request.onupgradeneeded = e => {
         db = e.target.result
 
-        const personalNotes = db.createObjectStore("personal_notes", { keyPath: "title" }) // make title as object key
+        const personalNotes = db.createObjectStore("personal_notes", { autoIncrement: true }) // auto increase key for document
         const todoNotes = db.createObjectStore("todo_notes", { keyPath: "title" }) // make title as object key
 
         alert("update is called")
@@ -30,7 +30,7 @@ const createDB = () => {
 const addNote = () => {
     try {
         const note = {
-            title: "hungdevjs" + Math.random(),
+            title: "hungdevjs",
             text: "Web Developer"
         }
 
@@ -46,7 +46,7 @@ const addNote = () => {
 const viewNotes = () => {
     const pNoteList = document.getElementById("personalNoteList")
     let html = ``
-    const tx = db.transaction("personal_notes", "readonly")
+    const tx = db.transaction("personal_notes", "readwrite")
     const pNotes = tx.objectStore("personal_notes")
 
     const request = pNotes.openCursor()
@@ -55,26 +55,57 @@ const viewNotes = () => {
 
         if (cursor) {
             // do something with cursor
-            // cursor.key === cursor.value.title (line 14, 15)
-            html += `<li>
-                title: ${cursor.key} - text: ${cursor.value.text}
+            // cursor.key === cursor.value.title in todoNotes (line 15)
+            html += `<li class="pNote" id="note-${cursor.key}">
+                Id: ${cursor.key} - text: ${cursor.value.text}
             </li>`
-
-            console.log(html)
 
             // next document
             cursor.continue()
         }
 
-        console.log(html)
         pNoteList.innerHTML = html
+        const pNoteElements = [...document.getElementsByClassName("pNote")]
+        for (pNoteEle of pNoteElements) {
+            pNoteEle.addEventListener("click", e => {
+                console.log(e.target)
+                const id = parseInt(e.target.id.split("-")[1])
+                deleteNote(id)
+            })
+        }
     }
+}
+
+const deleteNote = id => {
+    const tx = db.transaction("personal_notes", "readwrite")
+    const pNotes = tx.objectStore("personal_notes")
+    const request = pNotes.delete(id)
+    request.onsuccess = e => {
+        alert(`Deleted personal notes id: ${id}`)
+    }
+
+    request.onerror = e => {
+        alert(`Error: ${e.target.error}`)
+    }
+}
+
+const updateNote = () => {
+    const id = parseInt(document.getElementById("putId").value)
+    const text = document.getElementById("putText").value
+
+    const tx = db.transaction(["personal_notes", "todo_notes"], "readwrite")
+    const pNotes = tx.objectStore("personal_notes")
+    const request = pNotes.put({ text }, id)
+    request.onsuccess = e => alert(`Update success personal note id: ${id}`)
+    request.onerror = e => alert(`Error: ${e.target.error}`)
 }
 
 const createBtn = document.getElementById("createBtn")
 const addNoteBtn = document.getElementById("addNoteBtn")
 const viewNoteBtn = document.getElementById("viewNoteBtn")
+const updateBtn = document.getElementById("putBtn")
 
 createBtn.addEventListener("click", createDB)
 addNoteBtn.addEventListener("click", addNote)
 viewNoteBtn.addEventListener("click", viewNotes)
+updateBtn.addEventListener("click", updateNote)
